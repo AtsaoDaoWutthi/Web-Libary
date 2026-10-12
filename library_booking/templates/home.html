@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, quota_cells, booking_card with context %}
+{% block content %}
+<div class="stack">
+  <div class="hello">
+    <h1>สวัสดี {{ user.name.split()[0] }}</h1>
+    <p class="sub">{{ thai_date(now.today, True) }} · <span class="mono" data-clock>{{ now.dt.strftime('%H:%M') }}</span></p>
+  </div>
+
+  {% if next_booking %}
+  <section><h2 class="label">การจองถัดไป</h2>{{ booking_card(next_booking, url_for('home')) }}</section>
+  {% else %}
+  <div class="empty">ยังไม่มีการจองที่กำลังจะถึง<a class="btn pri" href="{{ url_for('book_time') }}">{{ icon('plus') }}จองที่นั่ง</a></div>
+  {% endif %}
+
+  <section class="card quota {{ 'over' if not left }}">
+    <h2 class="qh">{% if left %}วันนี้คุณเหลือโควตาจองได้อีก <em>{{ left|dur }}</em>{% else %}วันนี้คุณใช้โควตาครบ <em>3 ชั่วโมง</em> แล้ว{% endif %}</h2>
+    <p class="sub">จองได้สูงสุด 3 ชม./วัน · วันนี้จองไปแล้ว {{ used|dur }}</p>
+    {{ quota_cells(used) }}
+  </section>
+
+  {% if next_booking %}<a class="btn pri block" href="{{ url_for('book_time') }}">{{ icon('plus') }}จองที่นั่งเพิ่ม</a>{% endif %}
+
+  <section class="card howto">
+    <h2 class="qh">ใช้งานง่ายใน 3 ขั้นตอน</h2>
+    <ol>
+      <li><span class="n">1</span><div><b>เลือกวันและเวลา</b><span>เลือกเวลาเริ่มและระยะเวลา รวมไม่เกิน 3 ชม./วัน</span></div></li>
+      <li><span class="n">2</span><div><b>เลือกโต๊ะสีเขียว</b><span>เขียว = ว่าง · แดง = มีผู้จองแล้ว · เหลือง = กำลังใช้งาน</span></div></li>
+      <li><span class="n">3</span><div><b>เช็คอินภายใน 15 นาที</b><span>เมื่อถึงเวลาเริ่ม สแกน QR หรือกรอกรหัสนักศึกษา ไม่อย่างนั้นระบบจะยกเลิกให้อัตโนมัติ</span></div></li>
+    </ol>
+  </section>
+</div>
+{% endblock %}

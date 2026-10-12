@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, quota_cells, steps with context %}
+{% block title %}เลือกเวลา · ที่นั่งห้องสมุด{% endblock %}
+{% block content %}
+<div class="stack">
+  {{ steps(1, c) }}
+
+  <section class="card">
+    <h2 class="label">วันที่</h2>
+    <div class="chips" role="list">
+      {% for d in dates %}{% set ch = day_chip(d) %}
+      <a class="chip" role="listitem" href="{{ url_for('book_time', date=d) }}" {% if d == c.date %}aria-current="true"{% endif %}>
+        <span class="d">{{ 'วันนี้' if loop.first else ch.dow }}</span><span class="n">{{ ch.day }}</span><span class="d">{{ ch.mon }}</span></a>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if c.start is none %}
+  <div class="empty">{{ 'วันนี้' if c.date == now.today else thai_date(c.date) }}ไม่มีเวลาว่างให้จองแล้ว<br>ลองเลือกวันอื่น</div>
+  {% else %}
+  <section class="card">
+    <h2 class="label">เวลาเริ่ม</h2>
+    {% for g in groups %}
+    <div class="pgroup">
+      <div class="pname"><b>{{ g.p.label }}</b><span>{{ g.p.start|hhmm }}–{{ g.p.end|hhmm }}</span></div>
+      <div class="times">
+        {% for o in g.opts %}
+          {% if o.taken %}<span class="tbtn off" title="คุณจองเวลานี้ไว้แล้ว">{{ o.m|hhmm }}</span>
+          {% else %}<a class="tbtn" href="{{ url_for('book_time', date=c.date, start=o.m, len=c.len) }}" {% if o.m == c.start %}aria-current="true"{% endif %}>{{ o.m|hhmm }}</a>{% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <h2 class="label">อยู่นานเท่าไร</h2>
+    <div class="durs">
+      {% for d in durations %}
+      <a class="dbtn {{ 'over' if d.over }}" href="{{ url_for('book_time', date=c.date, start=c.start, len=d.m) }}" {% if d.m == c.len %}aria-current="true"{% endif %}>
+        {{ d.m|dur_short }}{% if d.over %}<small>เกินโควตา</small>{% endif %}</a>
+      {% endfor %}
+    </div>
+    <p class="sub" style="margin-top:8px">{% if limit_end < c.period.end %}คุณมีการจองต่อเวลา {{ limit_end|hhmm }} จึงเลือกได้ถึง {{ (limit_end - c.start)|dur }}{% else %}{{ c.period.label }}ปิด {{ c.period.end|hhmm }}{% endif %}</p>
+  </section>
+
+  <section class="card quota {{ 'over' if over }}">
+    <div class="picked"><b class="mono">{{ c.start|hhmm }}–{{ c.end|hhmm }}</b><span>{{ c.len|dur }}</span></div>
+    <h2 class="qh" style="margin-top:14px">
+      {% set who = 'วันนี้' if c.date == now.today else thai_date(c.date) %}
+      {% if left %}{{ who }}คุณเหลือโควตาจองได้อีก <em>{{ left|dur }}</em>{% else %}{{ who }}คุณใช้โควตาครบ <em>3 ชั่วโมง</em> แล้ว{% endif %}</h2>
+    <p class="sub">{% if over %}<b class="bad">เกินโควตา {{ (c.len - left)|dur }}</b> · ลดระยะเวลาลงเพื่อไปต่อ{% else %}หลังจองครั้งนี้จะเหลือ {{ (left - c.len)|dur }}{% endif %}</p>
+    {{ quota_cells(used, c.len, over) }}
+  </section>
+
+  {% if over %}
+  <button class="btn pri block" disabled>ถัดไป: เลือกโต๊ะ {{ icon('next') }}</button>
+  {% else %}
+  <a class="btn pri block" href="{{ url_for('book_seat', **choice_args(c)) }}">ถัดไป: เลือกโต๊ะ {{ icon('next') }}</a>
+  {% endif %}
+  {% endif %}
+</div>
+
+{% if show_modal %}
+{% set fit = (left // cfg.STEP) * cfg.STEP %}
+<dialog class="modal" id="quota-modal" data-autoopen aria-labelledby="qm-t">
+  <div class="ico">{{ icon('alert') }}</div>
+  <h2 id="qm-t">คุณใช้โควตาเกินกำหนด (สูงสุด 3 ชม./วัน)</h2>
+  <p>{% if left %}คุณเลือกไว้ {{ c.len|dur }} แต่จองได้อีกเพียง {{ left|dur }}{% else %}วันนี้คุณจองครบ 3 ชั่วโมงแล้ว ยกเลิกการจองเดิมหรือเลือกวันอื่น{% endif %}</p>
+  <div class="facts"><div>เลือกไว้<b>{{ c.len|dur_short }}</b></div><div>จองแล้ว<b>{{ used|dur_short }}</b></div><div>เหลือ<b>{{ left|dur_short }}</b></div></div>
+  <div class="acts">
+    {% if fit %}<a class="btn pri block" href="{{ url_for('book_time', date=c.date, start=c.start, len=fit) }}">ปรับเป็น {{ fit|dur }}</a>{% endif %}
+    <button type="button" class="btn ghost block" data-close>{{ 'เลือกเอง' if fit else 'เข้าใจแล้ว' }}</button>
+  </div>
+</dialog>
+{% endif %}
+{% endblock %}

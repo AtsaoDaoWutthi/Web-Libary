@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, quota_cells, steps, rule_box with context %}
+{% block title %}ยืนยันการจอง · ที่นั่งห้องสมุด{% endblock %}
+{% block content %}
+{% set over = c.len > left %}
+<div class="stack">
+  {{ steps(3, c) }}
+  <section class="card">
+    <div class="seat-hero"><span class="code">{{ seat.id }}</span>
+      <div><b>{{ seat_type.name }}</b>
+        <div class="tags"><span class="tag">{{ icon(seat_type.icon) }}โซน {{ seat.zone }}</span><span class="tag">ชั้น {{ floor }}</span></div></div></div>
+    <dl class="rows">
+      <div><dt>วันที่</dt><dd>{{ thai_date(c.date, True) }}</dd></div>
+      <div><dt>เวลา</dt><dd class="mono">{{ c.start|hhmm }}–{{ c.end|hhmm }}</dd></div>
+      <div><dt>ระยะเวลา</dt><dd>{{ c.len|dur }}</dd></div>
+      <div><dt>โควตาคงเหลือหลังจอง</dt><dd class="{{ 'bad' if over }}">{{ 'เกินโควตา' if over else (left - c.len)|dur ~ ' / 3 ชม.' }}</dd></div>
+    </dl>
+    {{ quota_cells(used, c.len, over) }}
+  </section>
+
+  {{ rule_box(c.start) }}
+  {% if warn %}<p class="warn">{{ icon('alert') }}<span>{{ warn }}</span></p>{% endif %}
+
+  <form method="post" class="two">
+    {{ csrf() }}
+    {% for k, v in choice_args(c, floor=floor, seat=seat.id).items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+    <a class="btn ghost" href="{{ url_for('book_seat', floor=floor, **choice_args(c)) }}">{{ icon('back') }}กลับ</a>
+    <button class="btn pri" {% if warn %}disabled{% endif %}>{{ icon('check') }}ยืนยันการจอง</button>
+  </form>
+</div>
+{% endblock %}

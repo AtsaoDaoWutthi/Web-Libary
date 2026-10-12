@@ -1,0 +1,130 @@
+{# ไอคอนจาก sprite ใน _icons.html #}
+{% macro icon(name) -%}
+<svg class="i" aria-hidden="true"><use href="#i-{{ name }}"/></svg>
+{%- endmacro %}
+
+{% macro csrf() -%}
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+{%- endmacro %}
+
+{# แถบโควตา 6 ช่อง ช่องละ 30 นาที #}
+{% macro quota_cells(used, adding=0, over=False) -%}
+{% set u = used // cfg.STEP %}{% set a = adding // cfg.STEP %}
+<div class="qcells" aria-hidden="true">
+  {%- for i in range(cfg.DAY_LIMIT // cfg.STEP) -%}
+  <i class="{% if i < u %}u{% elif i < u + a %}{{ 'x' if over else 's' }}{% endif %}"></i>
+  {%- endfor -%}
+</div>
+<div class="qscale"><span>0</span><span>1 ชม.</span><span>2 ชม.</span><span>3 ชม.</span></div>
+{%- endmacro %}
+
+{# แถบขั้นตอนการจอง 1-2-3 #}
+{% macro steps(step, c) -%}
+<nav class="steps" aria-label="ขั้นตอนการจอง">
+  {% set names = ['เลือกเวลา', 'เลือกโต๊ะ', 'ยืนยัน'] %}
+  {% set links = [url_for('book_time', **choice_args(c)) if c and c.start is not none else url_for('book_time'),
+                  url_for('book_seat', **choice_args(c)) if c and c.start is not none else '#', '#'] %}
+  {% for n in names %}{% set k = loop.index %}
+    {% if k < step %}<a class="step done" href="{{ links[loop.index0] }}"><i></i>{{ k }}. {{ n }}</a>
+    {% else %}<span class="step {{ 'now' if k == step }}" {% if k == step %}aria-current="step"{% endif %}><i></i>{{ k }}. {{ n }}</span>{% endif %}
+  {% endfor %}
+</nav>
+{%- endmacro %}
+
+{# กล่องเตือนกฎเช็คอิน 15 นาที #}
+{% macro rule_box(start) -%}
+<div class="rulebox" role="note">
+  <span class="ri">{{ icon('timer') }}</span>
+  <div><b>อย่าลืมเช็คอินภายใน {{ cfg.CHECKIN_WINDOW }} นาที</b>
+  เช็คอินด้วย QR Code หรือรหัสนักศึกษาในช่วง <span class="win">{{ start|hhmm }}–{{ (start + cfg.CHECKIN_WINDOW)|hhmm }}</span>
+  ถ้าเลยเวลานี้ระบบจะยกเลิกการจองให้อัตโนมัติ และโต๊ะจะกลับเป็นสีเขียวให้คนอื่นจองต่อทันที</div>
+</div>
+{%- endmacro %}
+
+{% set STATUS = {
+  'upcoming': ('p-up', 'รอเวลาเข้าใช้'), 'ready': ('p-ready', 'เช็คอินได้แล้ว'),
+  'in': ('p-in', 'กำลังใช้งาน'), 'done': ('p-done', 'ใช้งานเสร็จ'),
+  'noshow': ('p-no', 'ยกเลิกอัตโนมัติ'), 'cancelled': ('p-done', 'ยกเลิกแล้ว')} %}
+
+{% macro status_pill(st) -%}
+<span class="pill {{ STATUS[st][0] }}">{{ STATUS[st][1] }}</span>
+{%- endmacro %}
+
+{# การ์ดการจองที่ยังใช้งานอยู่ พร้อมนับถอยหลังและหน้าต่างเช็คอิน #}
+{% macro booking_card(b, back) -%}
+<article class="bk {{ 'live' if b.st == 'ready' }}" data-booking="{{ b.code }}"
+         data-start="{{ b.start_ms }}" data-deadline="{{ b.deadline_ms }}" data-st="{{ b.st }}">
+  <div class="bk-top">
+    <div>
+      <h3><span class="mono">{{ b.seat }}</span> · ชั้น {{ b.floor }}{% if b.sample %}<span class="sample">ตัวอย่าง</span>{% endif %}</h3>
+      <p>{{ thai_date(b.date) }} · <span class="mono">{{ b.start|hhmm }}–{{ b.end|hhmm }}</span> · {{ b.type.name }}</p>
+    </div>
+    {{ status_pill(b.st) }}
+  </div>
+
+  {% if b.st == 'ready' %}
+  <div class="cd" data-countdown="{{ b.deadline_ms }}">
+    <span class="t" data-cd-text>{{ '%02d:00'|format(cfg.CHECKIN_WINDOW) }}</span>
+    <span class="l">เหลือเวลาเช็คอิน · ปิดรับ {{ b.checkin_until|hhmm }}</span>
+    <span class="track"><i data-cd-bar></i></span>
+  </div>
+  {% elif b.st == 'upcoming' %}
+  <p class="note wait">{{ icon('clock') }}<span>เช็คอินได้ตั้งแต่ <b class="mono">{{ b.start|hhmm }}</b> ถึง <b class="mono">{{ b.checkin_until|hhmm }}</b>{% if b.date == now.today %} · อีก <span data-until="{{ b.start_ms }}">—</span>{% endif %}</span></p>
+  {% elif b.st == 'in' %}
+  <p class="note in">{{ icon('lamp') }}<span>เช็คอินแล้วเมื่อ <b class="mono">{{ b.checkin_at }}</b> · ใช้ได้ถึง <b class="mono">{{ b.end|hhmm }}</b></span></p>
+  {% endif %}
+
+  <div class="bk-acts">
+    {% if b.st == 'ready' %}
+      <button class="btn pri" type="button" data-open="ci-{{ b.code }}">{{ icon('qr') }}เช็คอินเลย</button>
+    {% elif b.st == 'upcoming' %}
+      <button class="btn ghost" type="button" data-open="ci-{{ b.code }}">{{ icon('qr') }}ดู QR Code</button>
+    {% elif b.st == 'in' %}
+      <form method="post" action="{{ url_for('do_checkout', code=b.code) }}">{{ csrf() }}<input type="hidden" name="next" value="{{ back }}">
+        <button class="btn ghost">{{ icon('out') }}เช็คเอาท์ คืนโต๊ะ</button></form>
+    {% endif %}
+    {% if b.st in ('ready', 'upcoming') %}
+      <button class="btn danger sm" type="button" data-toggle="cx-{{ b.code }}">ยกเลิกการจอง</button>
+    {% endif %}
+  </div>
+  {% if b.st in ('ready', 'upcoming') %}
+  <form class="confirm-inline" id="cx-{{ b.code }}" method="post" action="{{ url_for('do_cancel', code=b.code) }}" hidden>
+    {{ csrf() }}<input type="hidden" name="next" value="{{ back }}">
+    <span>ยกเลิกโต๊ะ {{ b.seat }} และคืนโควตา {{ b.length|dur }}?</span>
+    <span class="row"><button type="button" class="btn ghost sm" data-toggle="cx-{{ b.code }}">ไม่ยกเลิก</button><button class="btn danger sm">ยืนยันยกเลิก</button></span>
+  </form>
+  {% endif %}
+
+  {% if b.st in ('ready', 'upcoming') %}
+  {% set ready = b.st == 'ready' %}
+  <dialog class="sheet" id="ci-{{ b.code }}" aria-labelledby="ci-t-{{ b.code }}">
+    <div class="grab"></div>
+    <div><h3 id="ci-t-{{ b.code }}">{{ 'เช็คอินโต๊ะ' if ready else 'QR Code โต๊ะ' }} <span class="mono">{{ b.seat }}</span></h3>
+      <p class="sub">ชั้น {{ b.floor }} · {{ thai_date(b.date) }} <span class="mono">{{ b.start|hhmm }}–{{ b.end|hhmm }}</span></p></div>
+    {% if ready %}
+    <div class="cd" data-countdown="{{ b.deadline_ms }}">
+      <span class="t" data-cd-text>{{ '%02d:00'|format(cfg.CHECKIN_WINDOW) }}</span><span class="l">เหลือเวลาเช็คอิน</span><span class="track"><i data-cd-bar></i></span>
+    </div>
+    {% else %}
+    <p class="note wait">{{ icon('clock') }}<span>QR นี้ใช้เช็คอินได้ช่วง <b class="mono">{{ b.start|hhmm }}–{{ b.checkin_until|hhmm }}</b> เท่านั้น</span></p>
+    {% endif %}
+    <div class="seg" role="tablist" aria-label="วิธีเช็คอิน">
+      <button type="button" role="tab" aria-selected="true" data-pane="qr-{{ b.code }}">{{ icon('qr') }}สแกน QR</button>
+      <button type="button" role="tab" aria-selected="false" data-pane="id-{{ b.code }}">{{ icon('id') }}รหัสนักศึกษา</button>
+    </div>
+    <form class="pane" id="qr-{{ b.code }}" method="post" action="{{ url_for('do_checkin', code=b.code) }}" data-scan>
+      {{ csrf() }}<input type="hidden" name="next" value="{{ back }}"><input type="hidden" name="method" value="qr"><input type="hidden" name="value" value="{{ b.code }}">
+      <div class="qrrow"><div class="qrbox">{{ qr_svg(qr_url(b.code), 'QR Code เช็คอินโต๊ะ ' ~ b.seat) }}<span class="scanline"></span></div>
+        <p class="sub">สแกนด้วยกล้องมือถือที่ล็อกอินบัญชีนี้ หรือยื่นที่เครื่องสแกนตรงทางเข้าชั้น {{ b.floor }}<br>รหัสการจอง <b class="mono">{{ b.code }}</b></p></div>
+      <button class="btn pri block" {% if not ready %}disabled{% endif %}>{{ icon('qr') }}<span data-scan-label>{{ 'จำลองการสแกน QR' if ready else 'ยังไม่ถึงเวลาเช็คอิน' }}</span></button>
+    </form>
+    <form class="pane field" id="id-{{ b.code }}" method="post" action="{{ url_for('do_checkin', code=b.code) }}" hidden>
+      {{ csrf() }}<input type="hidden" name="next" value="{{ back }}"><input type="hidden" name="method" value="id">
+      <label for="sid-{{ b.code }}">รหัสนักศึกษา 11 หลัก</label>
+      <div class="row"><input id="sid-{{ b.code }}" name="value" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" required autocomplete="off" placeholder="{{ user.id }}" {% if not ready %}disabled{% endif %}><button class="btn pri" {% if not ready %}disabled{% endif %}>เช็คอิน</button></div>
+    </form>
+    <button type="button" class="btn ghost block" data-close>ปิด</button>
+  </dialog>
+  {% endif %}
+</article>
+{%- endmacro %}

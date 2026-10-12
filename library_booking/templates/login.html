@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf with context %}
+{% block title %}เข้าสู่ระบบ · ที่นั่งห้องสมุด{% endblock %}
+{% block content %}
+<div class="auth">
+  <section class="auth-hero">
+    <h1>จองโต๊ะอ่านหนังสือ<br>ได้ในไม่ถึงนาที</h1>
+    <p>เลือกเวลา เลือกโต๊ะว่าง แล้วเช็คอินเมื่อมาถึง</p>
+    <ul class="legend big">
+      <li><i class="dot ok"></i>ว่าง</li><li><i class="dot busy"></i>มีผู้จองแล้ว</li><li><i class="dot occ"></i>กำลังใช้งาน</li>
+    </ul>
+  </section>
+  <form class="card stack" method="post">
+    {{ csrf() }}
+    <h2 class="h2">เข้าสู่ระบบ</h2>
+    {% if error %}<p class="warn">{{ icon('alert') }}<span>{{ error }}</span></p>{% endif %}
+    <div class="field"><label for="student_id">รหัสนักศึกษา</label>
+      <input id="student_id" name="student_id" inputmode="numeric" maxlength="11" pattern="[0-9]{11}" required value="{{ form.student_id }}" placeholder="11 หลัก" autocomplete="username"></div>
+    <div class="field"><label for="name">ชื่อ (กรอกเฉพาะครั้งแรก)</label>
+      <input id="name" name="name" value="{{ form.name }}" placeholder="เช่น สมชาย ใจดี" autocomplete="name"></div>
+    <button class="btn pri block">เข้าสู่ระบบ {{ icon('next') }}</button>
+    <button class="btn ghost block" type="button" data-fill="{{ cfg.DEMO_STUDENT.id }}">ใช้บัญชีทดลอง {{ cfg.DEMO_STUDENT.id }}</button>
+    <p class="sub">ระบบต้นแบบ: ใช้รหัสนักศึกษาเข้าสู่ระบบ ยังไม่มีรหัสผ่าน</p>
+  </form>
+</div>
+{% endblock %}

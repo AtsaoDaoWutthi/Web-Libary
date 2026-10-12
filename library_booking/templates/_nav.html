@@ -1,0 +1,4 @@
+{% from "_macros.html" import icon %}
+<a href="{{ url_for('home') }}" {% if tab == 'home' %}aria-current="page"{% endif %}>{{ icon('home') }}<span>หน้าแรก</span></a>
+<a href="{{ url_for('book_time') }}" {% if tab == 'book' %}aria-current="page"{% endif %}>{{ icon('plus') }}<span>จองที่นั่ง</span></a>
+<a href="{{ url_for('my_bookings') }}" {% if tab == 'mine' %}aria-current="page"{% endif %}>{{ icon('list') }}<span>การจองของฉัน</span>{% if ready_count %}<span class="badge">{{ ready_count }}</span>{% endif %}</a>

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, booking_card, status_pill with context %}
+{% block title %}การจองของฉัน · ที่นั่งห้องสมุด{% endblock %}
+{% block content %}
+<div class="stack">
+  <section>
+    <h1 class="label">กำลังจะถึง</h1>
+    <div class="list">
+      {% for b in upcoming %}{{ booking_card(b, url_for('my_bookings')) }}
+      {% else %}<div class="empty">ยังไม่มีการจอง<a class="btn pri" href="{{ url_for('book_time') }}">{{ icon('plus') }}จองที่นั่ง</a></div>{% endfor %}
+    </div>
+  </section>
+
+  {% if banned_until %}<p class="warn">{{ icon('alert') }}<span>บัญชีถูกระงับสิทธิ์การจองถึง {{ thai_date(banned_until) }} เพราะไม่มาเช็คอินครบ {{ cfg.MAX_NOSHOW }} ครั้ง</span></p>{% endif %}
+
+  <section>
+    <h2 class="label spread"><span>ประวัติ</span><span class="muted">ไม่มาเช็คอิน {{ noshow }}/{{ cfg.MAX_NOSHOW }} ครั้งใน 30 วัน</span></h2>
+    <div class="list history">
+      {% for b in history %}
+      <article class="bk past">
+        <div class="bk-top"><div>
+          <h3><span class="mono">{{ b.seat }}</span> · ชั้น {{ b.floor }}{% if b.sample %}<span class="sample">ตัวอย่าง</span>{% endif %}</h3>
+          <p>{{ thai_date(b.date) }} · <span class="mono">{{ b.start|hhmm }}–{{ b.end|hhmm }}</span>
+            {% if b.st == 'noshow' %} · ไม่ได้เช็คอินภายใน 15 นาที โต๊ะถูกปล่อยคืนแล้ว{% elif b.checkin_at %} · เข้า {{ b.checkin_at }}{% if b.checkout_at %} ออก {{ b.checkout_at }}{% endif %}{% endif %}</p>
+        </div>{{ status_pill(b.st) }}</div>
+      </article>
+      {% else %}<div class="empty">ยังไม่มีประวัติ</div>{% endfor %}
+    </div>
+  </section>
+
+  <details class="test">
+    <summary>{{ icon('clock') }} โหมดทดสอบ: เลื่อนเวลาเพื่อดูการนับถอยหลัง</summary>
+    <p class="sub">เวลาของระบบตอนนี้ <b class="mono">{{ now.dt.strftime('%H:%M:%S') }}</b> (มีผลกับทุกคนในระบบ ใช้สำหรับสาธิตเท่านั้น)</p>
+    <form method="post" action="{{ url_for('demo_clock') }}" class="sim">
+      {{ csrf() }}<input type="hidden" name="next" value="{{ url_for('my_bookings') }}">
+      <label for="simt">ตั้งเวลา</label><input id="simt" type="time" name="time" value="{{ now.dt.strftime('%H:%M') }}">
+      <button class="btn ghost sm" name="action" value="set">ตั้งเวลา</button>
+      {% if test_target %}
+      <input type="hidden" name="code" value="{{ test_target.code }}">
+      <button class="btn ghost sm" name="action" value="start">ไปที่เวลาเริ่ม {{ test_target.start|hhmm }} ({{ test_target.seat }})</button>
+      <button class="btn ghost sm" name="action" value="late">30 วินาทีก่อนหมดเวลาเช็คอิน</button>
+      {% endif %}
+      <button class="btn ghost sm" name="action" value="real">ใช้เวลาจริง</button>
+    </form>
+  </details>
+</div>
+{% endblock %}

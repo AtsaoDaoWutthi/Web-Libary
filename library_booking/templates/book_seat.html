@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, steps with context %}
+{% block title %}เลือกโต๊ะ · ที่นั่งห้องสมุด{% endblock %}
+{% block content %}
+<div class="stack">
+  {{ steps(2, c) }}
+  <div class="summary-bar"><span>{{ thai_date(c.date) }} · <b class="mono">{{ c.start|hhmm }}–{{ c.end|hhmm }}</b></span>
+    <a class="link" href="{{ url_for('book_time', **choice_args(c)) }}">เปลี่ยนเวลา</a></div>
+
+  <section class="card stack" style="gap:14px">
+    <div class="seg">
+      {% for f in cfg.FLOORS %}
+      <a href="{{ url_for('book_seat', floor=f.n, type=kind, **choice_args(c)) }}" {% if f.n == floor %}aria-current="true"{% endif %}>ชั้น {{ f.n }} <small>ว่าง {{ free[f.n] }}</small></a>
+      {% endfor %}
+    </div>
+    <ul class="legend"><li><i class="dot ok"></i>ว่าง</li><li><i class="dot busy"></i>มีผู้จองแล้ว</li><li><i class="dot occ"></i>กำลังใช้งาน</li><li><i class="dot mine"></i>ของฉัน</li></ul>
+    <div class="filters">
+      {% for k, label in [('all','ทุกแบบ'),('window','หน้าต่าง'),('power','ปลั๊กไฟ'),('group','กลุ่ม 4 คน'),('lamp','โคมไฟ')] %}
+      <a href="{{ url_for('book_seat', floor=floor, type=k, **choice_args(c)) }}" {% if k == kind %}aria-current="true"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="plan" aria-label="แผนผังชั้น {{ floor }}">
+      <div class="windowwall" aria-hidden="true"></div>
+      {% for z in zones %}
+      <div class="zone">
+        <div class="zone-h"><span class="z">{{ z.t.zone }}</span>{{ icon(z.t.icon) }}{{ z.t.zone_name }}</div>
+        <div class="grid g{{ z.t.cols }}">
+          {% for s in z.seats %}{% set st = states[s.id] %}
+          {% set label = 'การจองของคุณ' if st.mine else {'ok':'ว่าง','busy':'มีผู้จองแล้ว','occ':'กำลังใช้งาน'}[st.st] %}
+          {% set cls = 'seat ' ~ ('group ' if s.type == 'group') ~ ('' if st.st == 'ok' else st.st) ~ (' mine' if st.mine) ~ (' dim' if kind != 'all' and kind != s.type) %}
+          {% if st.st == 'ok' %}
+          <a class="{{ cls }}" href="{{ url_for('book_confirm', floor=floor, seat=s.id, **choice_args(c)) }}" title="{{ s.id }} · {{ label }}" aria-label="{{ s.id }} {{ z.t.name }} {{ label }}">{{ icon(z.t.icon) }}<span class="sid">{{ s.id }}</span></a>
+          {% else %}
+          <span class="{{ cls }}" title="{{ s.id }} · {{ label }}" aria-label="{{ s.id }} {{ label }}">{{ icon(z.t.icon) }}<span class="sid">{{ s.id }}</span></span>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+      <div class="foot"><span class="door">{{ icon('door') }}ทางเข้า · จุดเช็คอิน</span><span>ชั้น {{ floor }} · {{ (cfg.FLOORS|selectattr('n','equalto',floor)|first).name }}</span></div>
+    </div>
+    <p class="sub center">แตะโต๊ะสีเขียวเพื่อเลือก</p>
+  </section>
+  <a class="btn ghost block" href="{{ url_for('book_time', **choice_args(c)) }}">{{ icon('back') }}ย้อนกลับ</a>
+</div>
+{% endblock %}

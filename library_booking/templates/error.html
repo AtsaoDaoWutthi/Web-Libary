@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block content %}
+<div class="empty">{{ icon('alert') }}<p>{{ message }}</p><a class="btn pri" href="{{ url_for('home') }}">กลับหน้าแรก</a></div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, rule_box with context %}
+{% block title %}จองสำเร็จ · ที่นั่งห้องสมุด{% endblock %}
+{% block content %}
+<div class="stack">
+  <section class="card success">
+    <div class="ok-ico">{{ icon('check') }}</div>
+    <h1 class="h2">จองสำเร็จ</h1>
+    <p class="sub">โต๊ะ <b class="mono">{{ b.seat }}</b> ชั้น {{ b.floor }} · {{ thai_date(b.date) }} <span class="mono">{{ b.start|hhmm }}–{{ b.end|hhmm }}</span></p>
+    <p class="sub">รหัสการจอง <b class="mono">{{ b.code }}</b></p>
+  </section>
+  {{ rule_box(b.start) }}
+  <div class="two">
+    <a class="btn ghost" href="{{ url_for('book_time') }}">จองเพิ่ม</a>
+    <a class="btn pri" href="{{ url_for('my_bookings') }}">ดูการจองของฉัน</a>
+  </div>
+</div>
+{% endblock %}
